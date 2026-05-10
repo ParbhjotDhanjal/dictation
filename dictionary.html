@@ -131,8 +131,8 @@
             sugBox.innerHTML = filtered.map(w => `<div class="sug-item" onclick="fetchDefinition('${w}')">${w}</div>`).join('');
             sugBox.style.display = 'block';
         } else { sugBox.style.display = 'none'; }
+        
     }
-
   async function fetchDefinition(word) {
         document.getElementById('dictSearch').value = word;
         document.getElementById('suggestions').style.display = 'none';
@@ -184,6 +184,7 @@
             display.innerHTML = "Could not find details. Please check the spelling and try again."; 
         }
     }
+    
     function startSession(mode, isNextSet = false) {
         sessionMode = mode;
         if(mode === 'default') {
