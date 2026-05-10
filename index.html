@@ -86,23 +86,29 @@
         <button class="btn-green" onclick="addManualWord()" style="width:80px; margin:0; padding:10px;">Add</button>
     </div>
 </div>
-    <div id="library-sec" class="section">
-        <h3>My Saved Words</h3>
-        <div id="library-display" class="library-grid"></div>
-        <hr style="margin-top:20px; border: 0; border-top: 1px solid #eee;">
-        <p style="font-size: 14px; color: #666;">Practice your saved words:</p>
-        <select id="practice-count"><option value="5">5 Words</option><option value="10">10 Words</option><option value="20" selected>20 Words</option></select>
-        <button class="btn-blue" onclick="startSession('library')">Start Library Practice</button>
+<div id="library-sec" class="section">
+    <h3>My Saved Words</h3>
+    
+    <div style="background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px dashed var(--primary);">
+        <p style="font-size: 14px; margin-bottom: 8px; font-weight: bold;">Add New Word to Library</p>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="customWord" placeholder="Type word & press Enter..." 
+                   onkeydown="if(event.key==='Enter') addManualWord()" style="margin:0;">
+            <button class="btn-green" onclick="addManualWord()" style="width:80px; margin:0; padding:10px;">Add</button>
+        </div>
+        <div id="add-feedback" style="font-size: 12px; margin-top: 5px;"></div>
     </div>
-</div>
 
-<div id="skipModal" class="modal">
-    <div class="modal-content">
-        <p style="color:#666; margin-bottom: 5px;">Correct Spelling:</p>
-        <h2 id="correct-word-display" style="color:var(--danger); letter-spacing: 3px; margin: 10px 0;"></h2>
-        <button class="btn-green" onclick="saveToLibrary()">Save to My Library</button>
-        <button class="btn-blue" style="background:#888" onclick="closeSkipModal()">Just Move Next</button>
-    </div>
+    <div id="library-display" class="library-grid"></div>
+    <hr style="margin-top:20px; border: 0; border-top: 1px solid #eee;">
+    
+    <p style="font-size: 14px; color: #666;">Practice your saved words:</p>
+    <select id="practice-count">
+        <option value="5">5 Words</option>
+        <option value="10">10 Words</option>
+        <option value="20" selected>20 Words</option>
+    </select>
+    <button class="btn-blue" onclick="startSession('library')">Start Library Practice</button>
 </div>
 
 <script>
@@ -153,53 +159,55 @@
     }
 
     // 3. The "Unlimited" search engine
-    async function fetchDefinition(word) {
-        document.getElementById('dictSearch').value = word;
-        document.getElementById('suggestions').style.display = 'none';
-        const display = document.getElementById('dictDisplay');
-        display.innerHTML = "Searching global database...";
-        display.style.display = 'block';
+  async function fetchDefinition(word) {
+    document.getElementById('dictSearch').value = word;
+    document.getElementById('suggestions').style.display = 'none';
+    const display = document.getElementById('dictDisplay');
+    display.innerHTML = "Searching global database...";
+    display.style.display = 'block';
 
-        try {
-            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-            if(!res.ok) throw new Error("Word not found");
-            
-            const data = await res.json();
-            const punjabiRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(word)}`);
-            const punjabiData = await punjabiRes.json();
-            
-            const meaning = data[0].meanings[0];
-            const punjabiWord = punjabiData[0][0][0];
+    try {
+        // 1. Fetch data from the Dictionary API (similar to Oxford/Google data)
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        if(!res.ok) throw new Error("Word not found");
+        const data = await res.json();
+        
+        // 2. Get Punjabi Translation for the word itself
+        const punjabiRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(word)}`);
+        const punjabiData = await punjabiRes.json();
+        const punjabiWord = punjabiData[0][0][0];
 
-            let html = `<h2>${word.toUpperCase()} <span class="punjabi-text">(${punjabiWord})</span></h2>`;
-            html += `<p><strong>Type:</strong> <i>${meaning.partOfSpeech}</i></p>`;
-            html += `<p><strong>Meaning:</strong> ${meaning.definitions[0].definition}</p>`;
-            html += `<h4>Real Usage Examples:</h4>`;
+        let html = `<h2>${word.toUpperCase()} <span class="punjabi-text">(${punjabiWord})</span></h2>`;
+        
+        // 3. Loop through every Part of Speech (Noun, Verb, Adverb, etc.)
+        data[0].meanings.forEach(meaning => {
+            html += `<div style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;">`;
+            html += `<span style="background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: var(--primary); text-transform: uppercase; font-size: 12px;">${meaning.partOfSpeech}</span>`;
             
-            let realExamples = [];
-            data.forEach(entry => {
-                entry.meanings.forEach(m => {
-                    m.definitions.forEach(d => {
-                        if (d.example) realExamples.push(d.example);
-                    });
-                });
-            });
+            // Show the first definition for this part of speech
+            const def = meaning.definitions[0];
+            html += `<p style="margin: 8px 0;"><strong>Definition:</strong> ${def.definition}</p>`;
 
-            if (realExamples.length === 0) {
-                realExamples = [`I am learning the professional meaning of the word "${word}".`];
+            // 4. Find real examples and translate them to Punjabi
+            if (def.example) {
+                html += `<h4>Usage Example:</h4>`;
+                // Note: We skip the translation fetch inside this loop for speed, 
+                // but you can add it if needed.
+                html += `<div class="example-item">🔹 ${def.example}</div>`;
             }
-
-            for(let ex of realExamples.slice(0, 4)) {
-                const trans = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(ex)}`);
-                const transData = await trans.json();
-                html += `<div class="example-item">🔹 ${ex}<br><span class="punjabi-text">${transData[0][0][0]}</span></div>`;
+            
+            // Show synonyms if available
+            if (meaning.synonyms && meaning.synonyms.length > 0) {
+                html += `<p style="font-size: 13px;"><strong>Synonyms:</strong> ${meaning.synonyms.slice(0, 3).join(', ')}</p>`;
             }
+            html += `</div>`;
+        });
 
-            display.innerHTML = html;
-        } catch(e) { 
-            display.innerHTML = `<p style="color:red;">"${word}" not found in dictionary. Check spelling or try a simpler word.</p>`; 
-        }
+        display.innerHTML = html;
+    } catch(e) { 
+        display.innerHTML = `<p style="color:red;">"${word}" not found. Please check the spelling.</p>`; 
     }
+}
     
     function startSession(mode, isNextSet = false) {
         sessionMode = mode;
@@ -271,18 +279,41 @@
             userLibrary.map(w => `<div class="word-card">${w}</div>`).join('') : 
             "<p style='grid-column: 1/-1; text-align:center; color:#999;'>No words saved yet.</p>";
     }
-    function addManualWord() {
+   async function addManualWord() {
     const wordInput = document.getElementById('customWord');
+    const feedback = document.getElementById('add-feedback');
     const word = wordInput.value.trim().toLowerCase();
     
-    if(word && !userLibrary.includes(word)) {
-        userLibrary.push(word);
-        localStorage.setItem('myPTE_Lib', JSON.stringify(userLibrary));
-        wordInput.value = ""; // Clear input
-        renderLibrary();      // Refresh the list
-        alert("Word added to your practice library!");
-    } else if (userLibrary.includes(word)) {
-        alert("This word is already in your library.");
+    if(!word) return;
+
+    feedback.innerText = "Verifying spelling...";
+    feedback.style.color = "orange";
+
+    try {
+        // Check with Dictionary API to confirm spelling/existence
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        
+        if(res.ok) {
+            // Word exists in dictionary
+            if(!userLibrary.includes(word)) {
+                userLibrary.push(word);
+                localStorage.setItem('myPTE_Lib', JSON.stringify(userLibrary));
+                wordInput.value = ""; 
+                feedback.innerText = "✅ Word verified and added!";
+                feedback.style.color = "green";
+                renderLibrary();
+            } else {
+                feedback.innerText = "This word is already in your library.";
+                feedback.style.color = "var(--primary)";
+            }
+        } else {
+            // Word not found in dictionary
+            feedback.innerText = "❌ Invalid spelling. Not found in dictionary.";
+            feedback.style.color = "red";
+        }
+    } catch(e) {
+        feedback.innerText = "Connection error. Try again.";
+        feedback.style.color = "red";
     }
 }
 </script>
