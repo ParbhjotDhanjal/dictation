@@ -42,10 +42,12 @@
         <button class="tab-btn" onclick="switchTab('library')">Library</button>
     </div>
 
-    <div id="dict-sec" class="section">
-        <h3>Smart Dictionary (With Punjabi)</h3>
-        <div style="position:relative;">
-            <input type="text" id="dictSearch" placeholder="Type word (e.g. com...)" oninput="handleDictInput()">
+<div id="dict-sec" class="section">
+        <h3>Global Dictionary</h3>
+        <p style="font-size: 13px; color: #666; margin-bottom: 5px;">Search any PTE or Engineering term</p>
+        <div style="display:flex; gap:5px; position:relative;">
+            <input type="text" id="dictSearch" placeholder="Type ANY word..." oninput="handleDictInput()" style="margin:0;">
+            <button class="btn-blue" onclick="manualSearch()" style="width:100px; margin:0; padding:10px; white-space: nowrap;">Search</button>
             <div id="suggestions"></div>
         </div>
         <div id="dictDisplay" class="dict-result" style="display:none;"></div>
@@ -98,7 +100,7 @@
 </div>
 
 <script>
-    const masterList = ["abandon", "ability", "absence", "academic", "acceptable", "accident", "accompany", "accomplish", "accurate", "achieve", "acknowledge", "acquire", "adaptation", "adequate", "adjacent", "adjustment", "administration", "adult", "advocate", "affect", "aggregate", "aid", "albeit", "allocation", "alter", "alternative", "ambiguity", "amendment", "analogous", "analysis", "annual", "anticipate", "apparent", "appendix", "appreciation", "approach", "appropriate", "approximation", "arbitrary", "area", "aspect", "assembly", "assessment", "assignment", "assistance", "assumption", "assurance", "attachment", "attain", "attitude", "attribute", "author", "authority", "automation", "available", "awareness", "behalf", "benefit", "bias", "bond", "brief", "bulk", "capability", "capacity", "category", "cease", "challenge", "channel", "chapter", "chart", "chemical", "circumstance", "citation", "civil", "clarification", "classic", "clause", "code", "coherence", "coincide", "collapse", "colleague", "combination", "commence", "comment", "commission", "commitment", "commodity", "communication", "community", "compatible", "compensation", "compilation", "complement", "complex", "component", "compound", "comprehensive", "comprise", "computing", "conceivable", "concentration", "concept", "conception", "concession", "conclusion", "concrete"];
+    const masterList = ["abandon", "ability", "absence", "academic", "acceptable", "accident", "accompany", "accomplish", "accurate", "achieve", "acknowledge", "acquire", "adaptation", "adequate", "adjacent", "adjustment", "administration", "adult", "advocate", "affect", "aggregate", "aid", "albeit", "allocation", "alter", "alternative", "ambiguity", "amendment", "analogous", "analysis", "annual", "anticipate", "apparent", "appendix", "appreciation", "approach", "appropriate", "approximation", "arbitrary", "area", "aspect", "assembly", "assessment", "assignment", "assistance", "assumption", "assurance", "attachment", "attain", "attitude", "attribute", "author", "authority", "automation", "available", "awareness", "be", "behalf", "benefit", "bias", "bond", "brief", "bulk", "come", "capability", "capacity", "category", "cease", "challenge", "channel", "chapter", "chart", "chemical", "circumstance", "citation", "civil", "clarification", "classic", "clause", "code", "coherence", "coincide", "collapse", "colleague", "combination", "commence", "comment", "commission", "commitment", "commodity", "communication", "community", "compatible", "compensation", "compilation", "complement", "complex", "component", "compound", "comprehensive", "comprise", "computing", "conceivable", "concentration", "concept", "conception", "concession", "conclusion", "concrete"];
 
     let userLibrary = JSON.parse(localStorage.getItem('myPTE_Lib')) || [];
     let currentQueue = [], currentIndex = 0, correctCount = 0, skipCount = 0, globalSetOffset = 0, sessionMode = 'default';
@@ -124,6 +126,15 @@
     }
     window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
+// 1. New function to trigger search when button is clicked
+    function manualSearch() {
+        const word = document.getElementById('dictSearch').value.trim();
+        if(word) {
+            fetchDefinition(word);
+        }
+    }
+
+    // 2. Updated to keep the academic list for quick selection
     function handleDictInput() {
         const val = document.getElementById('dictSearch').value.toLowerCase();
         const sugBox = document.getElementById('suggestions');
@@ -135,15 +146,18 @@
         } else { sugBox.style.display = 'none'; }
     }
 
+    // 3. The "Unlimited" search engine
     async function fetchDefinition(word) {
         document.getElementById('dictSearch').value = word;
         document.getElementById('suggestions').style.display = 'none';
         const display = document.getElementById('dictDisplay');
-        display.innerHTML = "Searching...";
+        display.innerHTML = "Searching global database...";
         display.style.display = 'block';
 
         try {
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+            if(!res.ok) throw new Error("Word not found");
+            
             const data = await res.json();
             const punjabiRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(word)}`);
             const punjabiData = await punjabiRes.json();
@@ -166,7 +180,7 @@
             });
 
             if (realExamples.length === 0) {
-                realExamples = [`The word "${word}" is common in academic English study.`];
+                realExamples = [`I am learning the professional meaning of the word "${word}".`];
             }
 
             for(let ex of realExamples.slice(0, 4)) {
@@ -177,7 +191,7 @@
 
             display.innerHTML = html;
         } catch(e) { 
-            display.innerHTML = "Definition found, but translation is loading. Try again in a moment."; 
+            display.innerHTML = `<p style="color:red;">"${word}" not found in dictionary. Check spelling or try a simpler word.</p>`; 
         }
     }
     
