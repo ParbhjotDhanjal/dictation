@@ -133,7 +133,7 @@
         } else { sugBox.style.display = 'none'; }
     }
 
-    async function fetchDefinition(word) {
+  async function fetchDefinition(word) {
         document.getElementById('dictSearch').value = word;
         document.getElementById('suggestions').style.display = 'none';
         const display = document.getElementById('dictDisplay');
@@ -141,8 +141,11 @@
         display.style.display = 'block';
 
         try {
+            // 1. Get English data
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
             const data = await res.json();
+            
+            // 2. Get Punjabi Translation for the word
             const punjabiRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(word)}`);
             const punjabiData = await punjabiRes.json();
             
@@ -150,28 +153,37 @@
             const punjabiWord = punjabiData[0][0][0];
 
             let html = `<h2>${word.toUpperCase()} <span class="punjabi-text">(${punjabiWord})</span></h2>`;
-            html += `<p><strong>Part of Speech:</strong> ${meaning.partOfSpeech}</p>`;
-            html += `<p><strong>English:</strong> ${meaning.definitions[0].definition}</p>`;
-            html += `<h4>Sentences with "${word}":</h4>`;
+            html += `<p><strong>Part of Speech:</strong> <i>${meaning.partOfSpeech}</i></p>`;
+            html += `<p><strong>Meaning:</strong> ${meaning.definitions[0].definition}</p>`;
+            html += `<h4>Real Usage Examples:</h4>`;
             
-            // Generate REAL sentences using the word
-            const baseSentences = [
-                `The ${word} is important for our project.`,
-                `We need to analyze the ${word} carefully.`,
-                `Can you explain the meaning of ${word}?`,
-                `This ${word} will help us in the exam.`,
-                `I am learning how to use ${word} correctly.`
-            ];
+            // 3. Find ACTUAL dictionary examples (No templates!)
+            let realExamples = [];
+            data.forEach(entry => {
+                entry.meanings.forEach(m => {
+                    m.definitions.forEach(d => {
+                        if (d.example) realExamples.push(d.example);
+                    });
+                });
+            });
 
-            for(let ex of baseSentences) {
+            // 4. If no examples exist, use a simple safe sentence
+            if (realExamples.length === 0) {
+                realExamples = [`The word "${word}" is commonly used in academic English.`];
+            }
+
+            // 5. Show examples with Punjabi translations
+            for(let ex of realExamples.slice(0, 5)) {
                 const trans = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(ex)}`);
                 const transData = await trans.json();
                 html += `<div class="example-item">🔹 ${ex}<br><span class="punjabi-text">${transData[0][0][0]}</span></div>`;
             }
-            display.innerHTML = html;
-        } catch(e) { display.innerHTML = "Error fetching data. Please check connection."; }
-    }
 
+            display.innerHTML = html;
+        } catch(e) { 
+            display.innerHTML = "Could not find details. Please check the spelling and try again."; 
+        }
+    }
     function startSession(mode, isNextSet = false) {
         sessionMode = mode;
         if(mode === 'default') {
