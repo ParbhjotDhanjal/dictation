@@ -46,7 +46,7 @@
         <h3>Global Dictionary</h3>
         <p style="font-size: 13px; color: #666; margin-bottom: 5px;">Search any PTE or Engineering term</p>
         <div style="display:flex; gap:5px; position:relative;">
-            <input type="text" id="dictSearch" placeholder="Type ANY word..." oninput="handleDictInput()" style="margin:0;">
+            <input type="text" id="dictSearch" placeholder="Type ANY word..." oninput="handleDictInput()" onkeydown="if(event.key==='Enter') manualSearch()" style="margin:0;">
             <button class="btn-blue" onclick="manualSearch()" style="width:100px; margin:0; padding:10px; white-space: nowrap;">Search</button>
             <div id="suggestions"></div>
         </div>
@@ -79,7 +79,13 @@
             <button class="btn-red" style="background:#888" onclick="location.reload()">Reset Session</button>
         </div>
     </div>
-
+<div style="background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px dashed var(--primary);">
+    <h4>Add Custom Word</h4>
+    <div style="display:flex; gap:5px;">
+        <input type="text" id="customWord" placeholder="Enter new word..." style="margin:0;">
+        <button class="btn-green" onclick="addManualWord()" style="width:80px; margin:0; padding:10px;">Add</button>
+    </div>
+</div>
     <div id="library-sec" class="section">
         <h3>My Saved Words</h3>
         <div id="library-display" class="library-grid"></div>
@@ -265,6 +271,20 @@
             userLibrary.map(w => `<div class="word-card">${w}</div>`).join('') : 
             "<p style='grid-column: 1/-1; text-align:center; color:#999;'>No words saved yet.</p>";
     }
+    function addManualWord() {
+    const wordInput = document.getElementById('customWord');
+    const word = wordInput.value.trim().toLowerCase();
+    
+    if(word && !userLibrary.includes(word)) {
+        userLibrary.push(word);
+        localStorage.setItem('myPTE_Lib', JSON.stringify(userLibrary));
+        wordInput.value = ""; // Clear input
+        renderLibrary();      // Refresh the list
+        alert("Word added to your practice library!");
+    } else if (userLibrary.includes(word)) {
+        alert("This word is already in your library.");
+    }
+}
 </script>
 </body>
 </html>
