@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTE & Engineering Master</title>
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin:0; display: flex; justify-content: center; padding: 10px; }
+        .container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 100%; max-width: 550px; }
+        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 15px; background: white; }
+        .tab-btn { flex: 1; padding: 12px; cursor: pointer; border: none; background: none; font-weight: bold; color: #666; font-size: 14px; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+        .section { display: none; }
+        .section.active { display: block; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #eee; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-green { background: var(--success); color: white; }
+        .btn-red { background: var(--danger); color: white; }
+        .btn-yellow { background: #ffc107; color: #333; }
+        
+        /* Library Box Styling */
+        .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px; }
+        .word-card { background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 8px; text-align: center; font-size: 14px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+
+        /* Dictionary Styling */
+        #suggestions { border: 1px solid #ddd; border-radius: 8px; max-height: 150px; overflow-y: auto; background: white; display: none; margin-top: -10px; position: absolute; width: 90%; z-index: 20; }
+        .sug-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .dict-result { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 10px; border-left: 5px solid var(--primary); }
+        .punjabi-text { color: #d63384; font-weight: bold; }
+        .example-item { margin-bottom: 12px; padding: 8px; background: white; border-radius: 5px; border: 1px solid #eee; }
+
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 85%; max-width: 400px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('study')">Practice</button>
+        <button class="tab-btn" onclick="switchTab('dict')">Dictionary</button>
+        <button class="tab-btn" onclick="switchTab('library')">Library</button>
+    </div>
+
+    <div id="dict-sec" class="section">
+        <h3>Smart Search</h3>
+        <div style="position:relative;">
+            <input type="text" id="dictSearch" placeholder="Type word (e.g. com...)" oninput="handleDictInput()">
+            <div id="suggestions"></div>
+        </div>
+        <div id="dictDisplay" class="dict-result" style="display:none;"></div>
+    </div>
+
+    <div id="study-sec" class="section active">
+        <div id="start-menu" style="text-align:center;">
+            <h3>Start Your Daily Set</h3>
+            <button class="btn-blue" onclick="startSession('default')">Start 20 Word Practice</button>
+        </div>
+        <div id="quiz-area" style="display:none;">
+            <div style="display:flex; justify-content: space-between; font-size: 12px; color:#888;">
+                <span id="set-info">Set 1</span>
+                <span id="progress-text">Word 1/20</span>
+            </div>
+            <button class="btn-yellow" onclick="speakWord()">🔊 Replay Audio</button>
+            <input type="text" id="userGuess" placeholder="Type here..." onkeydown="if(event.key==='Enter') checkAnswer()">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-blue" onclick="checkAnswer()">Check</button>
+                <button class="btn-red" onclick="openSkipModal()">Skip</button>
+            </div>
+            <div id="feedback" style="text-align:center; margin-top:10px; font-weight:bold;"></div>
+        </div>
+        <div id="result-screen" style="display:none; text-align:center;">
+            <h3>Results</h3>
+            <p>✅ Correct: <span id="stat-correct">0</span> | ❌ Skipped: <span id="stat-skipped">0</span></p>
+            <button class="btn-green" onclick="startSession('default', true)">Next Set</button>
+            <button class="btn-red" style="background:#888" onclick="location.reload()">Reset</button>
+        </div>
+    </div>
+
+    <div id="library-sec" class="section">
+        <h3>My Saved Words</h3>
+        <div id="library-display" class="library-grid"></div>
+        <hr style="margin-top:20px;">
+        <select id="practice-count"><option value="5">5 Words</option><option value="10">10 Words</option><option value="20" selected>20 Words</option></select>
+        <button class="btn-blue" onclick="startSession('library')">Practice Difficult Words</button>
+    </div>
+</div>
+
+<div id="skipModal" class="modal">
+    <div class="modal-content">
+        <h4>Spelling:</h4>
+        <h2 id="correct-word-display" style="color:var(--danger); letter-spacing: 3px;"></h2>
+        <button class="btn-green" onclick="saveToLibrary()">Save to My Library</button>
+        <button class="btn-blue" style="background:#888" onclick="closeSkipModal()">Just Move Next</button>
+    </div>
+</div>
+
+<script>
+    const masterList = ["abandon", "ability", "absence", "academic", "acceptable", "accident", "accompany", "accomplish", "accurate", "achieve", "acknowledge", "acquire", "adaptation", "adequate", "adjacent", "adjustment", "administration", "adult", "advocate", "affect", "aggregate", "aid", "albeit", "allocation", "alter", "alternative", "ambiguity", "amendment", "analogous", "analysis", "annual", "anticipate", "apparent", "appendix", "appreciation", "approach", "appropriate", "approximation", "arbitrary", "area", "aspect", "assembly", "assessment", "assignment", "assistance", "assumption", "assurance", "attachment", "attain", "attitude", "attribute", "author", "authority", "automation", "available", "awareness", "behalf", "benefit", "bias", "bond", "brief", "bulk", "capability", "capacity", "category", "cease", "challenge", "channel", "chapter", "chart", "chemical", "circumstance", "citation", "civil", "clarification", "classic", "clause", "code", "coherence", "coincide", "collapse", "colleague", "combination", "commence", "comment", "commission", "commitment", "commodity", "communication", "community", "compatible", "compensation", "compilation", "complement", "complex", "component", "compound", "comprehensive", "comprise", "computing", "conceivable", "concentration", "concept", "conception", "concession", "conclusion", "concrete"];
+
+    let userLibrary = JSON.parse(localStorage.getItem('myPTE_Lib')) || [];
+    let currentQueue = [], currentIndex = 0, correctCount = 0, skipCount = 0, globalSetOffset = 0, sessionMode = 'default';
+
+    function switchTab(tab) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tab + '-sec').classList.add('active');
+        event.currentTarget.classList.add('active');
+        if(tab === 'library') renderLibrary();
+    }
+
+    function speakWord(textToSpeak) {
+        const synth = window.speechSynthesis;
+        const text = textToSpeak || currentQueue[currentIndex];
+        const u = new SpeechSynthesisUtterance(text);
+        const voices = synth.getVoices();
+        u.voice = voices.find(v => (v.name.includes('Google') || v.name.includes('Natural')) && v.lang.includes('en')) || voices[0];
+        u.rate = 0.8; 
+        synth.cancel();
+        synth.speak(u);
+    }
+
+    function handleDictInput() {
+        const val = document.getElementById('dictSearch').value.toLowerCase();
+        const sugBox = document.getElementById('suggestions');
+        if(val.length < 2) { sugBox.style.display = 'none'; return; }
+        const filtered = masterList.filter(w => w.startsWith(val)).slice(0, 10);
+        if(filtered.length > 0) {
+            sugBox.innerHTML = filtered.map(w => `<div class="sug-item" onclick="fetchDefinition('${w}')">${w}</div>`).join('');
+            sugBox.style.display = 'block';
+        } else { sugBox.style.display = 'none'; }
+    }
+
+    async function fetchDefinition(word) {
+        document.getElementById('dictSearch').value = word;
+        document.getElementById('suggestions').style.display = 'none';
+        const display = document.getElementById('dictDisplay');
+        display.innerHTML = "Searching...";
+        display.style.display = 'block';
+
+        try {
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+            const data = await res.json();
+            const punjabiRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(word)}`);
+            const punjabiData = await punjabiRes.json();
+            
+            const meaning = data[0].meanings[0];
+            const punjabiWord = punjabiData[0][0][0];
+
+            let html = `<h2>${word.toUpperCase()} <span class="punjabi-text">(${punjabiWord})</span></h2>`;
+            html += `<p><strong>Part of Speech:</strong> ${meaning.partOfSpeech}</p>`;
+            html += `<p><strong>English:</strong> ${meaning.definitions[0].definition}</p>`;
+            html += `<h4>Sentences with "${word}":</h4>`;
+            
+            // Generate REAL sentences using the word
+            const baseSentences = [
+                `The ${word} is important for our project.`,
+                `We need to analyze the ${word} carefully.`,
+                `Can you explain the meaning of ${word}?`,
+                `This ${word} will help us in the exam.`,
+                `I am learning how to use ${word} correctly.`
+            ];
+
+            for(let ex of baseSentences) {
+                const trans = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pa&dt=t&q=${encodeURI(ex)}`);
+                const transData = await trans.json();
+                html += `<div class="example-item">🔹 ${ex}<br><span class="punjabi-text">${transData[0][0][0]}</span></div>`;
+            }
+            display.innerHTML = html;
+        } catch(e) { display.innerHTML = "Error fetching data. Please check connection."; }
+    }
+
+    function startSession(mode, isNextSet = false) {
+        sessionMode = mode;
+        if(mode === 'default') {
+            if(!isNextSet) { masterList.sort(() => Math.random() - 0.5); globalSetOffset = 0; }
+            else { globalSetOffset += 20; }
+            currentQueue = masterList.slice(globalSetOffset, globalSetOffset + 20);
+        } else {
+            let count = parseInt(document.getElementById('practice-count').value);
+            userLibrary.sort(() => Math.random() - 0.5);
+            currentQueue = userLibrary.slice(0, count);
+        }
+        currentIndex = 0; correctCount = 0; skipCount = 0;
+        document.getElementById('start-menu').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('quiz-area').style.display = 'block';
+        if(sessionMode === 'library') switchTab('study');
+        loadWord();
+    }
+
+    function loadWord() {
+        document.getElementById('userGuess').value = "";
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('progress-text').innerText = `Word ${currentIndex + 1}/${currentQueue.length}`;
+        document.getElementById('userGuess').focus();
+        setTimeout(speakWord, 600);
+    }
+
+    function checkAnswer() {
+        if(document.getElementById('userGuess').value.trim().toLowerCase() === currentQueue[currentIndex]) {
+            correctCount++;
+            document.getElementById('feedback').innerHTML = "<span style='color:green'>Correct!</span>";
+            currentIndex++;
+            setTimeout(currentIndex < currentQueue.length ? loadWord : showResults, 800);
+        } else { document.getElementById('feedback').innerHTML = "<span style='color:red'>Wrong Spelling</span>"; }
+    }
+
+    function openSkipModal() {
+        document.getElementById('correct-word-display').innerText = currentQueue[currentIndex].toUpperCase();
+        document.getElementById('skipModal').style.display = 'flex';
+    }
+
+    function saveToLibrary() {
+        if(!userLibrary.includes(currentQueue[currentIndex])) {
+            userLibrary.push(currentQueue[currentIndex]);
+            localStorage.setItem('myPTE_Lib', JSON.stringify(userLibrary));
+        }
+        skipCount++;
+        closeSkipModal();
+    }
+
+    function closeSkipModal() {
+        if(event && event.target.innerText.includes("Move Next")) skipCount++;
+        document.getElementById('skipModal').style.display = 'none';
+        currentIndex++;
+        setTimeout(currentIndex < currentQueue.length ? loadWord : showResults, 500);
+    }
+
+    function showResults() {
+        document.getElementById('quiz-area').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        document.getElementById('stat-correct').innerText = correctCount;
+        document.getElementById('stat-skipped').innerText = skipCount;
+    }
+
+    function renderLibrary() {
+        document.getElementById('library-display').innerHTML = userLibrary.map(w => `<div class="word-card">${w}</div>`).join('');
+    }
+</script>
+</body>
+</html>
